@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Generative Art Canvas</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #111;
+    color: #eee;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  #toolbar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 10px 20px;
+    background: #1a1a2e;
+    border-bottom: 1px solid #333;
+    flex-wrap: wrap;
+    z-index: 10;
+  }
+
+  #toolbar label {
+    font-size: 13px;
+    color: #aaa;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .btn-group {
+    display: flex;
+    gap: 4px;
+  }
+
+  .btn {
+    padding: 6px 14px;
+    border: 1px solid #444;
+    background: #222;
+    color: #ccc;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.15s;
+  }
+
+  .btn:hover { background: #333; color: #fff; }
+  .btn.active { background: #5c4dff; border-color: #7b6fff; color: #fff; }
+
+  .palette-swatch {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid #444;
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+
+  .palette-swatch:hover { transform: scale(1.2); }
+  .palette-swatch.active { border-color: #fff; transform: scale(1.2); }
+
+  #size-slider {
+    width: 100px;
+    accent-color: #5c4dff;
+  }
+
+  canvas {
+    flex: 1;
+    display: block;
+    cursor: crosshair;
+  }
+
+  #hint {
+    position: fixed;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.7);
+    padding: 8px 18px;
+    border-radius: 20px;
+    font-size: 13px;
+    color: #888;
+    pointer-events: none;
+    transition: opacity 0.5s;
+  }
+</style>
+</head>
+<body>
+
+<div id="toolbar">
+  <label>Brush</label>
+  <div class="btn-group" id="brush-group">
+    <button class="btn active" data-brush="particles">Particles</button>
+    <button class="btn" data-brush="ribbons">Ribbons</button>
+    <button class="btn" data-brush="stars">Stars</button>
+    <button class="btn" data-brush="bubbles">Bubbles</button>
+  </div>
+
+  <label>Palette</label>
+  <div class="btn-group" id="palette-group"></div>
+
+  <label>Size</label>
+  <input type="range" id="size-slider" min="2" max="60" value="20">
+
+  <button class="btn" id="clear-btn">Clear</button>
+  <button class="btn" id="save-btn">Save PNG</button>
+</div>
+
+<canvas id="canvas"></canvas>
+<div id="hint">Click &amp; drag to create art</div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const hint = document.getElementById('hint');
+
+const palettes = [
+  { name: 'Sunset',  colors: ['#ff6b6b','#ffa502','#ff6348','#ff4757','#eccc68'] },
+  { name: 'Ocean',   colors: ['#0abde3','#48dbfb','#0652DD','#1289A7','#82ccdd'] },
+  { name: 'Forest',  colors: ['#2ed573','#7bed9f','#26de81','#20bf6b','#badc58'] },
+  { name: 'Neon',    colors: ['#f368e0','#ff9ff3','#feca57','#ff6b6b','#48dbfb'] },
+  { name: 'Mono',    colors: ['#ffffff','#cccccc','#999999','#666666','#dddddd'] },
+];
+
+let currentPalette = 0;
+let currentBrush = 'particles';
+let brushSize = 20;
+let isDrawing = false;
+let lastX = 0, lastY = 0;
+let particles = [];
+let hintTimeout;
+
+function resize() {
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * devicePixelRatio;
+  canvas.height = rect.height * devicePixelRatio;
+  canvas.style.width = rect.width + 'px';
+  canvas.style.height = rect.height + 'px';
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+}
+
+function pickColor() {
+  const colors = palettes[currentPalette].colors;
+  return colors[Math.floor(Math.random() * colors.length)];
+}
+
+function spawnParticles(x, y, vxBase, vyBase) {
+  const count = Math.floor(brushSize / 3) + 2;
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = Math.random() * 3 + 1;
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed + vxBase * 0.3,
+      vy: Math.sin(angle) * speed + vyBase * 0.3,
+      radius: Math.random() * (brushSize / 4) + 1,
+      color: pickColor(),
+      life: 1,
+      decay: Math.random() * 0.02 + 0.005,
+      type: 'particle'
+    });
+  }
+}
+
+function spawnRibbon(x, y, vxBase, vyBase) {
+  particles.push({
+    x, y,
+    vx: vxBase * 0.5,
+    vy: vyBase * 0.5,
+    radius: brushSize / 2,
+    color: pickColor(),
+    life: 1,
+    decay: 0.008,
+    type: 'ribbon',
+    trail: [{x, y}]
+  });
+}
+
+function spawnStars(x, y) {
+  const count = Math.floor(brushSize / 6) + 1;
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const dist = Math.random() * brushSize;
+    particles.push({
+      x: x + Math.cos(angle) * dist,
+      y: y + Math.sin(angle) * dist,
+      vx: 0, vy: 0,
+      radius: Math.random() * (brushSize / 5) + 2,
+      color: pickColor(),
+      life: 1,
+      decay: Math.random() * 0.01 + 0.003,
+      type: 'star',
+      rotation: Math.random() * Math.PI
+    });
+  }
+}
+
+function spawnBubbles(x, y) {
+  const count = Math.floor(brushSize / 8) + 1;
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const dist = Math.random() * brushSize * 0.5;
+    particles.push({
+      x: x + Math.cos(angle) * dist,
+      y: y + Math.sin(angle) * dist,
+      vx: (Math.random() - 0.5) * 0.5,
+      vy: -Math.random() * 1.5 - 0.5,
+      radius: Math.random() * (brushSize / 3) + 4,
+      color: pickColor(),
+      life: 1,
+      decay: Math.random() * 0.005 + 0.002,
+      type: 'bubble'
+    });
+  }
+}
+
+function drawStar(cx, cy, radius, color, alpha, rotation) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(cx, cy);
+  ctx.rotate(rotation);
+  ctx.beginPath();
+  for (let i = 0; i < 5; i++) {
+    const angle = (i * 4 * Math.PI) / 5 - Math.PI / 2;
+    const method = i === 0 ? 'moveTo' : 'lineTo';
+    ctx[method](Math.cos(angle) * radius, Math.sin(angle) * radius);
+  }
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = radius;
+  ctx.fill();
+  ctx.restore();
+}
+
+function animate() {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.life -= p.decay;
+    if (p.life <= 0) {
+      particles.splice(i, 1);
+      continue;
+    }
+
+    p.x += p.vx;
+    p.y += p.vy;
+
+    if (p.type === 'particle') {
+      p.vx *= 0.98;
+      p.vy *= 0.98;
+      p.vy += 0.02;
+      ctx.globalAlpha = p.life;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.radius * p.life, 0, Math.PI * 2);
+      ctx.fillStyle = p.color;
+      ctx.shadowColor = p.color;
+      ctx.shadowBlur = p.radius * 2;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1;
+    }
+
+    if (p.type === 'ribbon') {
+      p.trail.push({x: p.x, y: p.y});
+      if (p.trail.length > 40) p.trail.shift();
+      p.vx += (Math.random() - 0.5) * 0.5;
+      p.vy += (Math.random() - 0.5) * 0.5;
+      p.vx *= 0.95;
+      p.vy *= 0.95;
+
+      if (p.trail.length > 2) {
+        ctx.beginPath();
+        ctx.moveTo(p.trail[0].x, p.trail[0].y);
+        for (let j = 1; j < p.trail.length; j++) {
+          const t = p.trail[j];
+          const prev = p.trail[j - 1];
+          const mx = (prev.x + t.x) / 2;
+          const my = (prev.y + t.y) / 2;
+          ctx.quadraticCurveTo(prev.x, prev.y, mx, my);
+        }
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = p.radius * p.life;
+        ctx.lineCap = 'round';
+        ctx.globalAlpha = p.life * 0.7;
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = p.radius;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    if (p.type === 'star') {
+      p.rotation += 0.02;
+      drawStar(p.x, p.y, p.radius * p.life, p.color, p.life, p.rotation);
+    }
+
+    if (p.type === 'bubble') {
+      p.vy *= 0.99;
+      p.radius += 0.05;
+      ctx.globalAlpha = p.life * 0.5;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+      ctx.strokeStyle = p.color;
+      ctx.lineWidth = 1.5;
+      ctx.shadowColor = p.color;
+      ctx.shadowBlur = 8;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // highlight
+      ctx.beginPath();
+      ctx.arc(p.x - p.radius * 0.3, p.y - p.radius * 0.3, p.radius * 0.15, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  requestAnimationFrame(animate);
+}
+
+function getCanvasPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  return { x: clientX - rect.left, y: clientY - rect.top };
+}
+
+function startDraw(e) {
+  isDrawing = true;
+  const pos = getCanvasPos(e);
+  lastX = pos.x;
+  lastY = pos.y;
+  hint.style.opacity = '0';
+  clearTimeout(hintTimeout);
+}
+
+function draw(e) {
+  if (!isDrawing) return;
+  e.preventDefault();
+  const pos = getCanvasPos(e);
+  const vx = pos.x - lastX;
+  const vy = pos.y - lastY;
+
+  switch (currentBrush) {
+    case 'particles': spawnParticles(pos.x, pos.y, vx, vy); break;
+    case 'ribbons':   spawnRibbon(pos.x, pos.y, vx, vy); break;
+    case 'stars':     spawnStars(pos.x, pos.y); break;
+    case 'bubbles':   spawnBubbles(pos.x, pos.y); break;
+  }
+
+  lastX = pos.x;
+  lastY = pos.y;
+}
+
+function stopDraw() {
+  isDrawing = false;
+}
+
+// Events
+canvas.addEventListener('mousedown', startDraw);
+canvas.addEventListener('mousemove', draw);
+canvas.addEventListener('mouseup', stopDraw);
+canvas.addEventListener('mouseleave', stopDraw);
+canvas.addEventListener('touchstart', startDraw, { passive: false });
+canvas.addEventListener('touchmove', draw, { passive: false });
+canvas.addEventListener('touchend', stopDraw);
+
+// Brush buttons
+document.querySelectorAll('#brush-group .btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelector('#brush-group .btn.active').classList.remove('active');
+    btn.classList.add('active');
+    currentBrush = btn.dataset.brush;
+  });
+});
+
+// Palette swatches
+const paletteGroup = document.getElementById('palette-group');
+palettes.forEach((pal, i) => {
+  const swatch = document.createElement('div');
+  swatch.className = 'palette-swatch' + (i === 0 ? ' active' : '');
+  swatch.style.background = `linear-gradient(135deg, ${pal.colors[0]}, ${pal.colors[2]})`;
+  swatch.title = pal.name;
+  swatch.addEventListener('click', () => {
+    document.querySelector('.palette-swatch.active').classList.remove('active');
+    swatch.classList.add('active');
+    currentPalette = i;
+  });
+  paletteGroup.appendChild(swatch);
+});
+
+// Size slider
+document.getElementById('size-slider').addEventListener('input', e => {
+  brushSize = parseInt(e.target.value);
+});
+
+// Clear
+document.getElementById('clear-btn').addEventListener('click', () => {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  particles.length = 0;
+});
+
+// Save
+document.getElementById('save-btn').addEventListener('click', () => {
+  const link = document.createElement('a');
+  link.download = 'generative-art.png';
+  link.href = canvas.toDataURL();
+  link.click();
+});
+
+// Init
+window.addEventListener('resize', resize);
+resize();
+animate();
+
+hintTimeout = setTimeout(() => { hint.style.opacity = '0'; }, 5000);
+</script>
+</body>
+</html>
