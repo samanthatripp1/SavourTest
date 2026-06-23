@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feedback Toolkit &mdash; savour co.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400;1,6..72,500;1,6..72,600&display=swap" rel="stylesheet">
+<style>
+  /* TAN Tangkiwood is a commercial font (not on free CDNs). This picks it up if
+     the viewer has it installed locally, or once a .woff2/.otf is embedded here;
+     otherwise it falls back gracefully to the serif stack. */
+  @font-face {
+    font-family: 'TAN Tangkiwood';
+    src: local('TAN Tangkiwood'), local('TAN - TANGKIWOOD'), local('TANTangkiwood'), local('TAN Tangkiwood Regular');
+    font-display: swap;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: #f4f3ef;
+    color: #35362e;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: #656c06; color: #f4f3ef; }
+  input::placeholder, textarea::placeholder { color: #a8a89c; }
+  button { font-family: inherit; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   Feedback Toolkit — Savour Co.
+   Vanilla recreation of the Claude Design handoff prototype.
+   ============================================================ */
+
+/* ---------- static data ---------- */
+
+const EMP = [
+  { id:'maya', name:'Maya Chen', firstName:'Maya', role:'Senior Designer', initials:'MC',
+    quote:'Give me the headline first, then let me sit with the details on my own.',
+    channel:'A short written note first, then a 1:1 to talk it through.',
+    praise:'Private. A quick DM means far more to me than a public shout-out.',
+    processing:'I need time to reflect. Share the topic before the meeting, not sprung in it.',
+    motivates:'Craft, autonomy, and seeing how my work fits the bigger picture.',
+    threats:'Surprise critique in a group setting; vague “just make it better” notes.',
+    timing:'Mid-morning. Never end-of-day, and never on a Friday.' },
+  { id:'darius', name:'Darius Okafor', firstName:'Darius', role:'Account Lead', initials:'DO',
+    quote:'Be direct with me. I’d rather hear it straight than read between the lines.',
+    channel:'In person, real-time. Say it plainly and we’ll figure it out together.',
+    praise:'Public is great — I light up when the team hears the win.',
+    processing:'I think out loud. Expect me to react in the moment, then circle back calmer.',
+    motivates:'Winning as a team, clear targets, and being trusted with big calls.',
+    threats:'Feeling managed or second-guessed; feedback that buries the point in cushioning.',
+    timing:'Early in the day, before the calls start.' },
+  { id:'lena', name:'Lena Vogt', firstName:'Lena', role:'Engineer', initials:'LV',
+    quote:'Show me the specifics. Examples land; abstractions just make me anxious.',
+    channel:'Written, with concrete examples I can re-read. Async is a gift.',
+    praise:'Low-key and private. Big fanfare actually makes me uncomfortable.',
+    processing:'I process slowly and deeply. Give me a day before expecting a response.',
+    motivates:'Mastery, uninterrupted focus time, and well-defined problems.',
+    threats:'Ambiguity, last-minute changes, and being put on the spot verbally.',
+    timing:'After lunch. Protect my mornings — that’s deep-work time.' },
+  { id:'priya', name:'Priya Nair', firstName:'Priya', role:'Marketing Manager', initials:'PN',
+    quote:'Tell me the why behind the feedback and I’ll run a mile with it.',
+    channel:'A conversation, with the intent stated up front. Context first, always.',
+    praise:'Public for team wins, private for personal growth notes.',
+    processing:'Quick to engage, but I appreciate a heads-up on heavier topics.',
+    motivates:'Impact, recognition of effort, and room to pitch new ideas.',
+    threats:'Feeling my effort went unseen; criticism with no path forward.',
+    timing:'Mid-week, mid-morning. Mondays are too frantic.' },
+  { id:'tomas', name:'Tomás Rivera', firstName:'Tomás', role:'Junior Analyst', initials:'TR',
+    quote:'I’m still learning — a little reassurance goes a long way with the hard stuff.',
+    channel:'In a 1:1, gently. Pair every growth note with what I’m doing right.',
+    praise:'Private, please. Public praise makes me worry I’ll let people down next time.',
+    processing:'I take feedback to heart, so name the behavior, not me. Check in after.',
+    motivates:'Learning, clear expectations, and knowing I’m on the right track.',
+    threats:'Harsh tone, comparison to peers, and feeling like I’ve disappointed you.',
+    timing:'Anytime, but follow up the next day — I tend to ruminate.' },
+];
+
+const PHASES = [
+  { id:'prep', label:'Prep', num:'01', tagline:'Set yourself — and them — up to feel safe.',
+    items:[
+      { text:'Check my stance — am I coming from care, not frustration?', prompt:'Where am I coming from right now, and what do I want for them?' },
+      { text:'Name what might feel threatening — to them and to me (status, certainty, autonomy, belonging, fairness).', prompt:'What might feel threatening here — to them? to me?' },
+      { text:'Choose the location — private, neutral, low-pressure.', prompt:'Where and when will we talk?' },
+      { text:'Re-read their user manual.', prompt:'What from their manual should I keep in mind?' },
+      { text:'Note one genuine strength to acknowledge first.', prompt:'What do I genuinely appreciate about their work?' },
+    ] },
+  { id:'deliver', label:'Deliver', num:'02', tagline:'Say it clearly and kindly — then make room for them.',
+    items:[
+      { text:'Practice the opening line out loud.', prompt:'My opening line…' },
+      { text:'Lead with intent — “I’m sharing this because…”', prompt:'“I’m sharing this because…”' },
+      { text:'Describe the behavior, not their character.', prompt:'The specific behavior, in plain facts…' },
+      { text:'Name the impact, then pause.', prompt:'The impact it had…' },
+      { text:'Invite their perspective before problem-solving.', prompt:'A question to open it up…' },
+      { text:'Agree on one small next step together.', prompt:'The next step we might land on…' },
+    ] },
+  { id:'followup', label:'Follow-Up', num:'03', tagline:'The conversation isn’t over when it ends.',
+    items:[
+      { text:'Schedule a check-in within two weeks.', prompt:'When will I check back in?' },
+      { text:'Notice and name any change you see.', prompt:'What change am I watching for?' },
+      { text:'Ask how the conversation landed for them.', prompt:'How did it land for them? (note afterward)' },
+      { text:'Adjust your approach if it didn’t land well.', prompt:'What I’d do differently next time…' },
+    ] },
+];
+
+const GLOSSARY = [
+  { tag:'Brain science', term:'The Threat Response', body:'Your brain treats social risk — being judged, excluded, or losing standing — much like physical danger. Once it fires, hearing becomes hard.', tip:'Lower the threat before you raise the issue.' },
+  { tag:'Framework', term:'SCARF', body:'Five social needs that trigger defensiveness when poked: Status, Certainty, Autonomy, Relatedness, and Fairness.', tip:'Scan which one your feedback might bruise, and soften it.' },
+  { tag:'Foundation', term:'Psychological Safety', body:'People take feedback well when they believe the relationship can hold it. Safety is built long before the hard conversation.', tip:'Invest in trust on the easy days.' },
+  { tag:'Brain science', term:'Negativity Bias', body:'We weigh criticism far more heavily than praise — roughly five to one. One sharp note can drown out a month of wins.', tip:'Be specific and frequent with genuine acknowledgment.' },
+  { tag:'Technique', term:'Behavior, Not Character', body:'“You were ten minutes late” is workable. “You’re unreliable” is an identity attack that invites defense.', tip:'Point at the action, never the person.' },
+  { tag:'Technique', term:'Lead With Intent', body:'Naming why you’re giving feedback disarms the threat response before it starts. Intent reframes critique as care.', tip:'Start with “I’m telling you this because I want you to…”' },
+  { tag:'Brain science', term:'Window of Tolerance', body:'Past a stress threshold, no one can absorb feedback — they’re flooded. Pushing on wastes the moment.', tip:'If they’re overwhelmed, pause and revisit later.' },
+  { tag:'Technique', term:'Feedforward', body:'Swap “here’s what went wrong” for “here’s what to try next.” The future is fixable; the past just stings.', tip:'Spend most of the conversation looking forward.' },
+  { tag:'Technique', term:'Specific Praise', body:'“Great job” fades fast. “The way you reframed the client’s problem” tells them exactly what to do again.', tip:'Name the move, not just the outcome.' },
+];
+
+const ONEONE_HISTORY = {
+  maya: [
+    { date:'Jun 8, 2026', summary:'Scope clarity on Q3; raised interest in mentoring.' },
+    { date:'May 25, 2026', summary:'Onboarding redesign kickoff and early wins.' },
+  ],
+  darius: [
+    { date:'Jun 5, 2026', summary:'Client tone in the call; pipeline for July.' },
+  ],
+  lena: [
+    { date:'Jun 1, 2026', summary:'Protecting deep-work mornings; ticket sizing.' },
+  ],
+};
+
+/* ---------- props (defaults from the design) ---------- */
+const PROPS = { showPhotos: true, managerName: 'Sam' };
+
+/* ---------- state ---------- */
+const state = {
+  screen: 'home',
+  selectedId: 'maya',
+  activePhase: 'prep',
+  checks: {},
+  notes: {},
+  log: null,
+  topic: '',
+  search: '',
+  docs: {},
+  draftPointYou: '',
+  draftPointThem: '',
+  draftAction: '',
+};
+
+/* ---------- persistence ---------- */
+function seedLog() {
+  return [
+    { who:'Tomás Rivera', date:'May 12, 2026', topic:'Reassured him after the dashboard bug — paired it with what he handled well.' },
+    { who:'Darius Okafor', date:'May 28, 2026', topic:'Straight talk on the client tone in last week’s call.' },
+    { who:'Maya Chen', date:'Jun 9, 2026', topic:'Note on scope creep — sent the agenda a day ahead.' },
+  ];
+}
+
+function seedDocs() {
+  return {
+    maya: {
+      checkYou:'Calm, glad we protected this time', checkThem:'A little stretched',
+      notes:'Talked through Q3 scope. Maya feels ownership on the research phase is fuzzy. Agreed to redraw the RACI before kickoff.',
+      pointsYou:[
+        { text:'Celebrate the onboarding redesign launch', done:true },
+        { text:'Clarify who owns research vs. delivery', done:false },
+      ],
+      pointsThem:[
+        { text:'Want more lead time on briefs', done:false },
+        { text:'Curious about mentoring a junior designer', done:false },
+      ],
+      actions:[
+        { text:'Send the Q3 brief by Thursday', owner:'you', done:false },
+        { text:'Draft a 30-day mentoring plan', owner:'them', done:false },
+      ],
+    },
+  };
+}
+
+function defaultDoc() {
+  return { checkYou:'', checkThem:'', notes:'', pointsYou:[], pointsThem:[], actions:[] };
+}
+
+function cloneDoc(d) {
+  return {
+    checkYou: d.checkYou || '', checkThem: d.checkThem || '', notes: d.notes || '',
+    pointsYou: (d.pointsYou || []).map(p => ({ ...p })),
+    pointsThem: (d.pointsThem || []).map(p => ({ ...p })),
+    actions: (d.actions || []).map(a => ({ ...a })),
+  };
+}
+
+function loadState() {
+  let checks = {}, notes = {}, log = null, docs = null;
+  try { checks = JSON.parse(localStorage.getItem('savour_fb_checks') || '{}') || {}; } catch (e) {}
+  try { notes = JSON.parse(localStorage.getItem('savour_fb_notes') || '{}') || {}; } catch (e) {}
+  try { log = JSON.parse(localStorage.getItem('savour_fb_log') || 'null'); } catch (e) {}
+  try { docs = JSON.parse(localStorage.getItem('savour_1on1') || 'null'); } catch (e) {}
+  if (!Array.isArray(log)) log = seedLog();
+  if (!docs || typeof docs !== 'object') docs = seedDocs();
+  state.checks = checks; state.notes = notes; state.log = log; state.docs = docs;
+}
+
+function persistChecks() { try { localStorage.setItem('savour_fb_checks', JSON.stringify(state.checks)); } catch (e) {} }
+function persistNotes()  { try { localStorage.setItem('savour_fb_notes', JSON.stringify(state.notes)); } catch (e) {} }
+function persistLog()    { try { localStorage.setItem('savour_fb_log', JSON.stringify(state.log)); } catch (e) {} }
+function persistDocs()   { try { localStorage.setItem('savour_1on1', JSON.stringify(state.docs)); } catch (e) {} }
+
+/* ---------- helpers ---------- */
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function today() {
+  try { return new Date().toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }); }
+  catch (e) { return ''; }
+}
+
+function selectedEmp() { return EMP.find(e => e.id === state.selectedId) || EMP[0]; }
+
+function curDoc() { return state.docs[state.selectedId] || defaultDoc(); }
+
+function mutateDoc(fn) {
+  const cur = state.docs[state.selectedId] || defaultDoc();
+  const doc = fn(cloneDoc(cur));
+  state.docs = { ...state.docs, [state.selectedId]: doc };
+  persistDocs();
+}
+
+/* ============================================================
+   View — each screen returns an HTML string
+   ============================================================ */
+
+function navLink(screen, label) {
+  const active = state.screen === screen;
+  return `<button data-action="nav" data-screen="${screen}" style="position:relative; background:none; border:none; cursor:pointer; padding:6px 0; font-size:12px; font-weight:600; letter-spacing:0.18em; text-transform:uppercase; color:#35362e;">
+      ${label}
+      ${active ? '<span style="position:absolute; left:0; right:0; bottom:-2px; height:2px; background:#656c06;"></span>' : ''}
+    </button>`;
+}
+
+function viewHeader() {
+  return `
+  <header style="position:sticky; top:0; z-index:50; background:rgba(244,243,239,0.86); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border-bottom:1px solid #e2dfd5;">
+    <div style="max-width:1180px; margin:0 auto; padding:0 36px; height:72px; display:flex; align-items:center; justify-content:space-between;">
+      <button data-action="nav" data-screen="home" style="background:none; border:none; cursor:pointer; padding:0; line-height:0; display:block;"><img src="assets/savour-logo.png" alt="savour co." style="height:25px; width:auto; display:block;"></button>
+      <nav style="display:flex; align-items:center; gap:32px;">
+        ${navLink('manuals', 'Manuals')}
+        ${navLink('oneone', '1:1 Doc')}
+        ${navLink('log', 'Log')}
+        ${navLink('glossary', 'Glossary')}
+        <button data-action="nav" data-screen="log" style="background:#35362e; border:none; cursor:pointer; padding:11px 20px; font-size:12px; font-weight:600; letter-spacing:0.15em; text-transform:uppercase; color:#f4f3ef;">Start a log</button>
+      </nav>
+    </div>
+  </header>`;
+}
+
+function viewFooter() {
+  return `
+  <footer style="border-top:1px solid #e2dfd5; margin-top:0;">
+    <div style="max-width:1180px; margin:0 auto; padding:40px 36px; display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap;">
+      <div style="line-height:0;"><img src="assets/savour-logo.png" alt="savour co." style="height:20px; width:auto; display:block;"></div>
+      <div style="font-family:'Newsreader',Georgia,serif; font-style:italic; font-size:16px; color:#8a8a7e;">For leaders who&rsquo;d rather grow people than grade them.</div>
+    </div>
+  </footer>`;
+}
+
+function viewHome() {
+  const logCount = (state.log || []).length;
+  const photo = PROPS.showPhotos
+    ? `<div style="aspect-ratio:4/5; background:#e7e4da; background-image:repeating-linear-gradient(48deg,#e0ddd2 0 11px,#e7e4da 11px 22px); border:1px solid #d8d4c8; display:flex; align-items:flex-end; padding:16px;">
+         <span style="font-family:'SFMono-Regular',Menlo,monospace; font-size:11px; color:#7d7d70; background:rgba(244,243,239,0.85); padding:4px 8px;">[ sunlit greenhouse / plants ]</span>
+       </div>`
+    : `<div style="aspect-ratio:4/5; background:#656c06;"></div>`;
+
+  return `
+  <main>
+    <!-- HERO -->
+    <section style="max-width:1180px; margin:0 auto; padding:84px 36px 56px;">
+      <div style="display:grid; grid-template-columns:1.05fr 0.95fr; gap:64px; align-items:center;">
+        <div>
+          <div style="font-size:12px; font-weight:600; letter-spacing:0.3em; text-transform:uppercase; color:#656c06; margin-bottom:26px;">A feedback toolkit for leaders</div>
+          <h1 style="font-family:'Instrument Serif',Georgia,serif; font-weight:400; font-size:66px; line-height:1.0; letter-spacing:-0.025em; margin:0 0 26px; text-wrap:balance;">Give feedback that lands &mdash; with more care than dread.</h1>
+          <p style="font-size:18px; line-height:1.6; color:#56564d; max-width:30em; margin:0 0 36px;">Three quiet tools to help you prepare, deliver, and follow up on feedback &mdash; built around how each person&rsquo;s brain actually wants to hear it.</p>
+          <div style="display:flex; gap:14px;">
+            <button data-action="nav" data-screen="log" style="background:#656c06; border:none; cursor:pointer; padding:15px 26px; font-size:13px; font-weight:600; letter-spacing:0.15em; text-transform:uppercase; color:#f4f3ef;">Start a feedback log</button>
+            <button data-action="nav" data-screen="manuals" style="background:none; border:1px solid #c9c6ba; cursor:pointer; padding:15px 26px; font-size:13px; font-weight:600; letter-spacing:0.15em; text-transform:uppercase; color:#35362e;">Read the manuals</button>
+          </div>
+        </div>
+        <div style="position:relative;">
+          ${photo}
+          <div style="position:absolute; bottom:-22px; left:-22px; background:#c58623; color:#f4f3ef; padding:18px 22px; max-width:230px;">
+            <div style="font-family:'Newsreader',Georgia,serif; font-style:italic; font-size:19px; line-height:1.3;">&ldquo;The conversation isn&rsquo;t over when it ends.&rdquo;</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ENCOURAGEMENT STRIP -->
+    <section style="max-width:1180px; margin:0 auto; padding:24px 36px 12px;">
+      <div style="border-top:1px solid #e2dfd5; border-bottom:1px solid #e2dfd5; padding:26px 0; display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap;">
+        <div style="display:flex; align-items:baseline; gap:16px;">
+          <span style="font-family:'Newsreader',Georgia,serif; font-size:40px; font-weight:600; color:#656c06; line-height:1;">${logCount}</span>
+          <span style="font-size:14px; color:#56564d; max-width:24em;">conversations logged so far. Every one is a person you chose to invest in.</span>
+        </div>
+        <div style="font-family:'Newsreader',Georgia,serif; font-style:italic; font-size:20px; color:#35362e;">Welcome back, ${esc(PROPS.managerName)}.</div>
+      </div>
+    </section>
+
+    <!-- TOOL CARDS -->
+    <section style="max-width:1180px; margin:0 auto; padding:48px 36px 90px;">
+      <div style="font-size:12px; font-weight:600; letter-spacing:0.3em; text-transform:uppercase; color:#9a9a8e; margin-bottom:28px;">Four tools, one toolkit</div>
+      <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:20px;">
+
+        <article style="background:#ffffff; border:1px solid #e7e4da; display:flex; flex-direction:column;">
+          <div style="height:158px; background:#656c06; position:relative; overflow:hidden;">
+            <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
+              <div style="width:62px; height:62px; border-radius:50%; border:2px solid rgba(244,243,239,0.6);"></div>
+            </div>
+          </div>
+          <div style="padding:30px 28px 28px; display:flex; flex-direction:column; flex:1;">
+            <div style="font-size:11px; font-weight:600; letter-spacing:0.24em; text-transform:uppercase; color:#656c06; margin-bottom:12px;">01 &mdash; Know your people</div>
+            <h3 style="font-family:'Instrument Serif',Georgia,serif; font-weight:400; font-size:30px; line-height:1.04; letter-spacing:-0.02em; margin:0 0 12px;">User Manuals</h3>
+            <p style="font-size:15px; line-height:1.6; color:#56564d; margin:0 0 26px; flex:1;">How each person likes to receive feedback &mdash; channel, timing, what motivates them, what to handle with care.</p>
+            <button data-action="nav" data-screen="manuals" style="align-self:flex-start; background:none; border:none; cursor:pointer; padding:0 0 4px; font-size:12px; font-weight:600; letter-spacing:0.15em; text-transform:uppercase; color:#35362e; border-bottom:1.5px solid #656c06;">Open manuals &rarr;</button>
+          </div>
+        </article>
+
+        <article style="background:#ffffff; border:1px solid #e7e4da; display:flex; flex-direction:column;">
+          <div style="height:158px; display:flex; overflow:hidden;">
+            <div style="flex:1; background:#656c06; display:flex; align-items:center; justify-content:flex-end;"><span style="width:40px; height:40px; border-radius:50%; border:2px solid rgba(244,243,239,0.7); margin-right:-20px; position:relative; z-index:2;"></span></div>
+            <div style="flex:1; background:#c58623; display:flex; align-items:center; justify-content:flex-start;"><span style="width:40px; height:40px; border-radius:50%; border:2px solid rgba(244,243,239,0.7); margin-left:-20px;"></span></div>
+          </div>
+          <div style="padding:30px 28px 28px; display:flex; flex-direction:column; flex:1;">
+            <div style="font-size:11px; font-weight:600; letter-spacing:0.24em; text-transform:uppercase; color:#656c06; margin-bottom:12px;">02 &mdash; Stay in sync</div>
+            <h3 style="font-family:'Instrument Serif',Georgia,serif; font-weight:400; font-size:30px; line-height:1.04; letter-spacing:-0.02em; margin:0 0 12px;">1:1 Doc</h3>
+            <p style="font-size:15px; line-height:1.6; color:#56564d; margin:0 0 26px; flex:1;">A shared space you and each report co-own &mdash; talking points, notes, and action items from both sides.</p>
+            <button data-action="nav" data-screen="oneone" style="align-self:flex-start; background:none; border:none; cursor:pointer; padding:0 0 4px; font-size:12px; font-weight:600; letter-spacing:0.15em; text-transform:uppercase; color:#35362e; border-bottom:1.5px solid #656c06;">Open 1:1 doc &rarr;</button>
+          </div>
+        </article>
+
+        <article style="background:#ffffff; border:1px solid #e7e4da; display:flex; flex-direction:column;">
+          <div style="height:158px; background:#35362e; position:relative; overflow:hidden;">
+            <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; gap:9px;">
+              <span style="width:46px; height:8px; background:rgba(244,243,239,0.85);"></span>
+              <span style="width:46px; height:8px; background:rgba(244,243,239,0.5);"></span>
+              <span style="width:46px; height:8px; background:rgba(244,243,239,0.28);"></span>
+            </div>
+          </div>
+          <div style="padding:30px 28px 28px; display:flex; flex-direction:column; flex:1;">
+            <div style="font-size:11px; font-weight:600; letter-spacing:0.24em; text-transform:uppercase; color:#656c06; margin-bottom:12px;">03 &mdash; Do it well</div>
+            <h3 style="font-family:'Instrument Serif',Georgia,serif; font-weight:400; font-size:30px; line-height:1.04; letter-spacing:-0.02em; margin:0 0 12px;">Feedback Log</h3>
+            <p style="font-size:15px; line-height:1.6; color:#56564d; margin:0 0 26px; flex:1;">Walk through prep, delivery, and follow-up &mdash; checking off each step &mdash; and keep a record you can be proud of.</p>
+            <button data-action="nav" data-screen="log" style="align-self:flex-start; background:none; border:none; cursor:pointer; padding:0 0 4px; font-size:12px; font-weight:600; letter-spacing:0.15em; text-transform:uppercase; color:#35362e; border-bottom:1.5px solid #656c06;">Start a log &rarr;</button>
+          </div>
+        </article>
+
+        <article style="background:#ffffff; border:1px solid #e7e4da; display:flex; flex-direction:column;">
+          <div style="height:158px; background:#c58623; position:relative; overflow:hidden;">
+            <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
+              <div style="width:52px; height:52px; background:rgba(244,243,239,0.85); transform:rotate(45deg);"></div>
+            </div>
+          </div>
+          <div style="padding:30px 28px 28px; display:flex; flex-direction:column; flex:1;">
+            <div style="font-size:11px; font-weight:600; letter-spacing:0.24em; text-transform:uppercase; color:#656c06; margin-bottom:12px;">04 &mdash; Keep learning</div>
+            <h3 style="font-family:'Instrument Serif',Georgia,serif; font-weight:400; font-size:30px; line-height:1.04; letter-spacing:-0.02em; margin:0 0 12px;">Glossary</h3>
+            <p style="font-size:15px; line-height:1.6; color:#56564d; margin:0 0 26px; flex:1;">Tips, brain science, and gentle reminders for feedback that informs without setting off alarm bells.</p>
+            <button data-action="nav" data-screen="glossary" style="align-self:flex-start; background:none; border:none; cursor:pointer; padding:0 0 4px; font-size:12px; font-weight:600; letter-spacing:0.15em; text-transform:uppercase; color:#35362e; border-bottom:1.5px solid #656c06;">Browse tips &rarr;</button>
+          </div>
+        </article>
+
+      </div>
+    </section>
+  </main>`;
+}
+
+function viewManuals() {
+  const sel = selectedEmp();
+  const sidebar = EMP.map(e => {
+    const active = e.id === state.selectedId;
+    return `<button data-action="selectEmp" data-id="${e.id}" style="position:relative; width:100%; text-align:left; background:none; border:none; border-bottom:1px solid #efece3; cursor:pointer; padding:18px 22px; display:flex; align-items:center; gap:14px;">
+        ${active ? '<span style="position:absolute; left:0; top:0; bottom:0; width:4px; background:#656c06;"></span>' : ''}
+        <span style="flex:none; width:42px; height:42px; border-radius:50%; background:#edebe5; color:#656c06; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:600; letter-spacing:0.02em;">${esc(e.initials)}</span>
+        <span style="min-width:0;">
+          <span style="display:block; font-size:15px; font-weight:600; color:#35362e;">${esc(e.name)}</span>
+          <span style="display:block; font-size:12px; color:#8a8a7e; margin-top:2px;">${esc(e.role)}</span>
+        </span>
+      </button>`;
+  }).join('');
+
+  const fields = [
+    { label:'How I like to receive feedback', value: sel.channel, labelColor:'#656c06' },
+    { label:'Public or private', value: sel.praise, labelColor:'#656c06' },
+    { label:'How I process', value: sel.processing, labelColor:'#656c06' },
+    { label:'What motivates me', value: sel.motivates, labelColor:'#656c06' },
+    { label:'Handle with care', value: sel.threats, labelColor:'#c58623' },
+    { label:'Best timing', value: sel.timing, labelColor:'#656c06' },
+  ].map(f => `<div>
+        <div style="font-size:11px; font-weight:600; letter-spacing:0.2em; text-transform:uppercase; color:${f.labelColor}; margin-bottom:9px;">${esc(f.label)}</div>
+        <div style="font-family:'Newsreader',Georgia,serif; font-size:18px; line-height:1.5; color:#35362e;">${esc(f.value)}</div>
+      </div>`).join('');
+
+  return `
+  <main style="max-width:1180px; margin:0 auto; padding:60px 36px 90px;">
+    <div style="font-size:12px; font-weight:600; letter-spacing:0.3em; text-transform:uppercase; color:#656c06; margin-bottom:18px;">User Manuals</div>
+    <h1 style="font-family:'Instrument Serif',Georgia,serif; font-weight:400; font-size:46px; line-height:1.05; letter-spacing:-0.022em; margin:0 0 14px; max-width:18em;">How each person likes to receive feedback.</h1>
+    <p style="font-size:17px; line-height:1.6; color:#56564d; max-width:34em; margin:0 0 44px;">Read the manual before the meeting. A minute here saves an hour of repair later.</p>
+
+    <div style="display:grid; grid-template-columns:300px 1fr; gap:40px; align-items:start;">
+      <aside style="background:#ffffff; border:1px solid #e7e4da;">${sidebar}</aside>
+
+      <section style="background:#ffffff; border:1px solid #e7e4da; padding:44px 44px 40px;">
+        <div style="display:flex; align-items:center; gap:22px; padding-bottom:28px; border-bottom:1px solid #efece3; margin-bottom:34px;">
+          <span style="flex:none; width:76px; height:76px; border-radius:50%; background:#656c06; color:#f4f3ef; display:flex; align-items:center; justify-content:center; font-size:26px; font-weight:600; font-family:'Newsreader',Georgia,serif;">${esc(sel.initials)}</span>
+          <div>
+            <h2 style="font-family:'Instrument Serif',Georgia,serif; font-weight:400; font-size:35px; line-height:1.02; letter-spacing:-0.02em; margin:0 0 4px;">${esc(sel.name)}</h2>
+            <div style="font-size:13px; font-weight:600; letter-spacing:0.16em; text-transform:uppercase; color:#9a9a8e;">${esc(sel.role)}</div>
+          </div>
+        </div>
+
+        <div style="font-family:'Newsreader',Georgia,serif; font-style:italic; font-size:24px; line-height:1.4; color:#35362e; margin-bottom:38px; max-width:26em;">&ldquo;${esc(sel.quote)}&rdquo;</div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:26px 40px;">${fields}</div>
+
+        <div style="margin-top:40px; padding-top:30px; border-top:1px solid #efece3;">
+          <button data-action="nav" data-screen="log" style="background:#656c06; border:none; cursor:pointer; padding:14px 24px; font-size:12px; font-weight:600; letter-spacing:0.15em; text-transform:uppercase; color:#f4f3ef;">Prep feedback for ${esc(sel.firstName)} &rarr;</button>
+        </div>
+      </section>
+    </div>
+  </main>`;
+}
+
+function empChips(padding) {
+  return EMP.map(e => {
+    const active = e.id === state.selectedId;
+    const bg = active ? '#656c06' : '#ffffff';
+    const color = active ? '#f4f3ef' : '#35362e';
+    const border = active ? '#656c06' : '#d8d4c8';
+    return `<button data-action="selectEmp" data-id="${e.id}" style="background:${bg}; color:${color}; border:1px solid ${border}; cursor:pointer; padding:${padding}; font-size:13px; font-weight:500; border-radius:999px;">${esc(e.firstName)}</button>`;
+  }).join('');
+}
+
+function viewLog() {
+  const sel = selectedEmp();
+  const logCount = (state.log || []).length;
+
+  const tabs = PHASES.map(p => {
+    const items = p.items;
+    const done = items.filter((it, idx) => !!state.checks[p.id + ':' + idx]).length;
+    const total = items.length;
+    const active = p.id === state.activePhase;
+    const tabBg = active ? '#35362e' : '#ffffff';
+    const tabColor = active ? '#f4f3ef' : '#35362e';
+    return `<button data-action="setPhase" data-phase="${p.id}" style="flex:1; background:${tabBg}; color:${tabColor}; border:1px solid #e2dfd5; border-bottom:none; cursor:pointer; padding:16px 14px 15px; text-align:left;">
+        <span style="display:block; font-size:11px; font-weight:600; letter-spacing:0.16em; text-transform:uppercase; opacity:0.7;">Phase ${esc(p.num)}</span>
+        <span style="display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin-top:5px;">
+          <span style="font-family:'Instrument Serif',Georgia,serif; font-size:23px; font-weight:400; letter-spacing:-0.02em;">${esc(p.label)}</span>
+          <span style="font-size:12px; font-weight:600; opacity:0.85;">${done}/${total}</span>
+        </span>
+      </button>`;
+  }).join('');
+
+  const phase = PHASES.find(p => p.id === state.activePhase) || PHASES[0];
+  const total = phase.items.length;
+  const done = phase.items.filter((it, idx) => !!state.checks[phase.id + ':' + idx]).length;
+  const pct = total ? Math.round((done / total) * 100) : 0;
+
+  const items = phase.items.map((it, idx) => {
+    const key = phase.id + ':' + idx;
+    const checked = !!state.checks[key];
+    const boxBg = checked ? '#656c06' : '#ffffff';
+    const boxBorder = checked ? '#656c06' : '#cfccc0';
+    const textColor = checked ? '#a3a397' : '#35362e';
+    const textDecoration = checked ? 'line-through' : 'none';
+    const note = state.notes[key] || '';
+    return `<div style="border-bottom:1px solid #f0ede4; padding:18px 2px;">
+        <div data-action="toggleCheck" data-key="${key}" style="display:flex; align-items:flex-start; gap:16px; cursor:pointer;">
+          <span style="flex:none; width:24px; height:24px; border-radius:5px; border:1.5px solid ${boxBorder}; background:${boxBg}; color:#f4f3ef; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; margin-top:1px;">${checked ? '&#10003;' : ''}</span>
+          <span style="font-size:16px; line-height:1.5; font-weight:500; color:${textColor}; text-decoration:${textDecoration};">${esc(it.text)}</span>
+        </div>
+        <textarea data-note-key="${key}" placeholder="${esc(it.prompt)}" rows="2" style="display:block; margin:12px 0 0 40px; width:calc(100% - 40px); background:#faf9f6; border:1px solid #ebe7dc; border-radius:6px; padding:11px 14px; font-size:15px; font-family:'Newsreader',Georgia,serif; line-height:1.5; color:#35362e; outline:none; resize:vertical;">${esc(note)}</textarea>
+      </div>`;
+  }).join('');
+
+  const showLogAction = state.activePhase !== 'prep';
+  const logActionBlock = showLogAction ? `
+          <div style="margin-top:30px; padding-top:26px; border-top:1px solid #efece3;">
+            <div style="font-size:11px; font-weight:600; letter-spacing:0.2em; text-transform:uppercase; color:#9a9a8e; margin-bottom:12px;">Record this conversation</div>
+            <div style="display:flex; gap:12px; flex-wrap:wrap;">
+              <input id="topic-input" data-field="topic" value="${esc(state.topic)}" placeholder="What was it about? (e.g. missed deadline on the Q3 deck)" style="flex:1; min-width:240px; background:#faf9f6; border:1px solid #d8d4c8; padding:13px 16px; font-size:15px; font-family:inherit; color:#35362e; outline:none;">
+              <button data-action="logIt" style="background:#35362e; border:none; cursor:pointer; padding:13px 24px; font-size:12px; font-weight:600; letter-spacing:0.15em; text-transform:uppercase; color:#f4f3ef; white-space:nowrap;">Log it for ${esc(sel.firstName)}</button>
+            </div>
+          </div>` : '';
+
+  const logEntries = (state.log || []).slice().reverse().map(e => `
+            <div style="padding:15px 0; border-bottom:1px solid rgba(244,243,239,0.1);">
+              <div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px;">
+                <span style="font-size:14px; font-weight:600;">${esc(e.who)}</span>
+                <span style="font-size:11px; color:rgba(244,243,239,0.5); white-space:nowrap;">${esc(e.date)}</span>
+              </div>
+              <div style="font-family:'Newsreader',Georgia,serif; font-style:italic; font-size:15px; line-height:1.4; color:rgba(244,243,239,0.82); margin-top:4px;">${esc(e.topic)}</div>
+            </div>`).join('');
+
+  return `
+  <main style="max-width:1180px; margin:0 auto; padding:60px 36px 90px;">
+    <div style="font-size:12px; font-weight:600; letter-spacing:0.3em; text-transform:uppercase; color:#656c06; margin-bottom:18px;">Feedback Log</div>
+    <h1 style="font-family:'Instrument Serif',Georgia,serif; font-weight:400; font-size:46px; line-height:1.05; letter-spacing:-0.022em; margin:0 0 14px; max-width:16em;">Good feedback, one careful step at a time.</h1>
+    <p style="font-size:17px; line-height:1.6; color:#56564d; max-width:34em; margin:0 0 40px;">Work through each phase before the conversation. When you&rsquo;re done, log it &mdash; and watch your record grow.</p>
+
+    <div style="display:grid; grid-template-columns:1fr 340px; gap:40px; align-items:start;">
+      <section>
+        <div style="background:#ffffff; border:1px solid #e7e4da; padding:22px 24px; margin-bottom:24px;">
+          <div style="font-size:11px; font-weight:600; letter-spacing:0.2em; text-transform:uppercase; color:#9a9a8e; margin-bottom:14px;">Who is this conversation for?</div>
+          <div style="display:flex; flex-wrap:wrap; gap:10px;">${empChips('9px 16px')}</div>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-bottom:0;">${tabs}</div>
+
+        <div style="background:#ffffff; border:1px solid #e2dfd5; padding:32px 34px 34px;">
+          <div style="font-family:'Newsreader',Georgia,serif; font-style:italic; font-size:21px; line-height:1.4; color:#56564d; margin-bottom:6px;">${esc(phase.tagline)}</div>
+          <div style="height:5px; background:#edebe5; margin:20px 0 28px; position:relative; overflow:hidden;">
+            <div style="position:absolute; left:0; top:0; bottom:0; width:${pct}%; background:#656c06; transition:width 0.3s ease;"></div>
+          </div>
+
+          ${items}
+          ${logActionBlock}
+        </div>
+      </section>
+
+      <aside style="background:#35362e; color:#f4f3ef; padding:30px 28px;">
+        <div style="font-size:11px; font-weight:600; letter-spacing:0.24em; text-transform:uppercase; color:#c58623; margin-bottom:18px;">Your feedback record</div>
+        <div style="display:flex; align-items:baseline; gap:12px; margin-bottom:6px;">
+          <span style="font-family:'Newsreader',Georgia,serif; font-size:48px; font-weight:600; line-height:1;">${logCount}</span>
+          <span style="font-size:14px; color:rgba(244,243,239,0.7);">conversations<br>and counting</span>
+        </div>
+        <p style="font-size:14px; line-height:1.5; color:rgba(244,243,239,0.7); margin:0 0 24px;">Feedback is a muscle. Look how often you&rsquo;ve shown up for your team.</p>
+        <div style="border-top:1px solid rgba(244,243,239,0.16); padding-top:8px;">${logEntries}</div>
+      </aside>
+    </div>
+  </main>`;
+}
+
+function viewGlossary() {
+  const q = (state.search || '').toLowerCase().trim();
+  const list = GLOSSARY.filter(g =>
+    !q || g.term.toLowerCase().includes(q) || g.body.toLowerCase().includes(q) || g.tag.toLowerCase().includes(q)
+  );
+
+  const cards = list.map(g => `
+        <article style="background:#ffffff; border:1px solid #e7e4da; padding:28px 26px; display:flex; flex-direction:column;">
+          <div style="font-size:11px; font-weight:600; letter-spacing:0.2em; text-transform:uppercase; color:#c58623; margin-bottom:14px;">${esc(g.tag)}</div>
+          <h3 style="font-family:'Instrument Serif',Georgia,serif; font-weight:400; font-size:25px; line-height:1.08; letter-spacing:-0.02em; margin:0 0 12px;">${esc(g.term)}</h3>
+          <p style="font-size:14.5px; line-height:1.6; color:#56564d; margin:0 0 18px; flex:1;">${esc(g.body)}</p>
+          <div style="border-top:1px solid #efece3; padding-top:14px; font-family:'Newsreader',Georgia,serif; font-style:italic; font-size:15px; line-height:1.45; color:#656c06;">${esc(g.tip)}</div>
+        </article>`).join('');
+
+  const noResults = list.length === 0
+    ? `<div style="padding:60px 0; text-align:center; font-family:'Newsreader',Georgia,serif; font-style:italic; font-size:20px; color:#9a9a8e;">Nothing matches &ldquo;${esc(state.search)}&rdquo; &mdash; try another word.</div>`
+    : '';
+
+  return `
+  <main style="max-width:1180px; margin:0 auto; padding:60px 36px 90px;">
+    <div style="font-size:12px; font-weight:600; letter-spacing:0.3em; text-transform:uppercase; color:#656c06; margin-bottom:18px;">Glossary</div>
+    <h1 style="font-family:'Instrument Serif',Georgia,serif; font-weight:400; font-size:46px; line-height:1.05; letter-spacing:-0.022em; margin:0 0 14px; max-width:16em;">Tips &amp; tricks for feedback that doesn&rsquo;t sting.</h1>
+    <p style="font-size:17px; line-height:1.6; color:#56564d; max-width:34em; margin:0 0 30px;">A little brain science, a lot of kindness. Skim before a tough conversation.</p>
+
+    <input id="search-input" data-field="search" value="${esc(state.search)}" placeholder="Search tips, terms, science&hellip;" style="width:100%; max-width:420px; background:#ffffff; border:1px solid #d8d4c8; padding:14px 18px; font-size:15px; font-family:inherit; color:#35362e; outline:none; margin-bottom:40px;">
+
+    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:22px;">${cards}</div>
+    ${noResults}
+  </main>`;
+}
+
+function pointRow(side, p, idx) {
+  const boxBg = p.done ? '#656c06' : '#ffffff';
+  const boxBorder = p.done ? '#656c06' : '#cfccc0';
+  const textColor = p.done ? '#a3a397' : '#35362e';
+  const textDecoration = p.done ? 'line-through' : 'none';
+  return `<div style="display:flex; align-items:flex-start; gap:10px; padding:8px 0; border-bottom:1px solid #f4f1e8;">
+      <button data-action="togglePoint" data-side="${side}" data-idx="${idx}" style="flex:none; margin-top:1px; width:18px; height:18px; border-radius:4px; border:1.5px solid ${boxBorder}; background:${boxBg}; cursor:pointer; color:#f4f3ef; font-size:11px; line-height:1; display:flex; align-items:center; justify-content:center;">${p.done ? '&#10003;' : ''}</button>
+      <span style="flex:1; font-size:14.5px; line-height:1.45; color:${textColor}; text-decoration:${textDecoration};">${esc(p.text)}</span>
+      <button data-action="removePoint" data-side="${side}" data-idx="${idx}" style="flex:none; background:none; border:none; cursor:pointer; color:#c4c0b3; font-size:17px; line-height:1; padding:0 2px;">&times;</button>
+    </div>`;
+}
+
+function viewOneOne() {
+  const sel = selectedEmp();
+  const doc = curDoc();
+
+  const pointsYou = doc.pointsYou.map((p, idx) => pointRow('you', p, idx)).join('');
+  const pointsThem = doc.pointsThem.map((p, idx) => pointRow('them', p, idx)).join('');
+
+  const actions = doc.actions.length ? doc.actions.map((a, idx) => {
+    const boxBg = a.done ? '#656c06' : '#ffffff';
+    const boxBorder = a.done ? '#656c06' : '#cfccc0';
+    const textColor = a.done ? '#a3a397' : '#35362e';
+    const textDecoration = a.done ? 'line-through' : 'none';
+    const ownerLabel = a.owner === 'you' ? 'You' : sel.firstName;
+    const ownerBg = a.owner === 'you' ? '#656c06' : '#c58623';
+    return `<div style="display:flex; align-items:center; gap:11px; padding:10px 0; border-bottom:1px solid #f4f1e8;">
+        <button data-action="toggleAction" data-idx="${idx}" style="flex:none; width:18px; height:18px; border-radius:4px; border:1.5px solid ${boxBorder}; background:${boxBg}; cursor:pointer; color:#f4f3ef; font-size:11px; line-height:1; display:flex; align-items:center; justify-content:center;">${a.done ? '&#10003;' : ''}</button>
+        <span style="flex:1; font-size:15px; line-height:1.4; color:${textColor}; text-decoration:${textDecoration};">${esc(a.text)}</span>
+        <button data-action="setOwner" data-idx="${idx}" style="flex:none; background:${ownerBg}; color:#f4f3ef; border:none; cursor:pointer; padding:4px 10px; border-radius:999px; font-size:10px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase;">${esc(ownerLabel)}</button>
+        <button data-action="removeAction" data-idx="${idx}" style="flex:none; background:none; border:none; cursor:pointer; color:#c4c0b3; font-size:17px; line-height:1; padding:0 2px;">&times;</button>
+      </div>`;
+  }).join('') : '';
+
+  const history = ONEONE_HISTORY[state.selectedId] || [];
+  const historyBlock = history.length
+    ? history.map(h => `
+            <div style="padding:13px 0; border-bottom:1px solid #f0ede4;">
+              <div style="font-size:13px; font-weight:600; color:#35362e;">${esc(h.date)}</div>
+              <div style="font-family:'Newsreader',Georgia,serif; font-style:italic; font-size:14px; line-height:1.4; color:#56564d; margin-top:3px;">${esc(h.summary)}</div>
+            </div>`).join('')
+    : `<div style="font-family:'Newsreader',Georgia,serif; font-style:italic; font-size:15px; color:#9a9a8e; padding:10px 0;">No past sessions yet &mdash; this is your first together.</div>`;
+
+  return `
+  <main style="max-width:1180px; margin:0 auto; padding:60px 36px 90px;">
+    <div style="font-size:12px; font-weight:600; letter-spacing:0.3em; text-transform:uppercase; color:#656c06; margin-bottom:18px;">1:1 Doc</div>
+    <h1 style="font-family:'Instrument Serif',Georgia,serif; font-weight:400; font-size:46px; line-height:1.05; letter-spacing:-0.022em; margin:0 0 14px; max-width:16em;">Your shared space with ${esc(sel.firstName)}.</h1>
+    <p style="font-size:17px; line-height:1.6; color:#56564d; max-width:36em; margin:0 0 6px;">A living doc you both own. Add talking points, capture notes together, and leave with clear next steps &mdash; <span style="font-family:'Newsreader',Georgia,serif; font-style:italic; color:#35362e;">both sides edit it.</span></p>
+
+    <div style="background:#ffffff; border:1px solid #e7e4da; padding:18px 22px; margin:28px 0 22px; display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap;">
+      <div>
+        <div style="font-size:11px; font-weight:600; letter-spacing:0.2em; text-transform:uppercase; color:#9a9a8e; margin-bottom:11px;">Whose 1:1?</div>
+        <div style="display:flex; flex-wrap:wrap; gap:9px;">${empChips('8px 15px')}</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:11px; font-weight:600; letter-spacing:0.2em; text-transform:uppercase; color:#9a9a8e; margin-bottom:6px;">This session</div>
+        <div style="font-family:'Newsreader',Georgia,serif; font-size:18px;">${esc(today())}</div>
+        <div style="font-size:12px; color:#9a9a8e; margin-top:2px;">Recurring weekly &middot; shared with ${esc(sel.firstName)}</div>
+      </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns:1fr 320px; gap:32px; align-items:start;">
+      <section>
+        <!-- check-in -->
+        <div style="background:#ffffff; border:1px solid #e7e4da; padding:26px 28px; margin-bottom:20px;">
+          <div style="font-size:11px; font-weight:600; letter-spacing:0.2em; text-transform:uppercase; color:#35362e; margin-bottom:18px;">Check-in &mdash; how are we each arriving?</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
+            <div>
+              <div style="font-size:11px; font-weight:600; letter-spacing:0.16em; text-transform:uppercase; color:#656c06; margin-bottom:8px;">You</div>
+              <input data-doc-field="checkYou" value="${esc(doc.checkYou)}" placeholder="A word for your headspace today&hellip;" style="width:100%; background:#faf9f6; border:1px solid #e4e0d4; border-radius:6px; padding:10px 13px; font-size:14.5px; font-family:'Newsreader',Georgia,serif; color:#35362e; outline:none;">
+            </div>
+            <div>
+              <div style="font-size:11px; font-weight:600; letter-spacing:0.16em; text-transform:uppercase; color:#c58623; margin-bottom:8px;">${esc(sel.firstName)}</div>
+              <input data-doc-field="checkThem" value="${esc(doc.checkThem)}" placeholder="How they&rsquo;re arriving&hellip;" style="width:100%; background:#faf9f6; border:1px solid #e4e0d4; border-radius:6px; padding:10px 13px; font-size:14.5px; font-family:'Newsreader',Georgia,serif; color:#35362e; outline:none;">
+            </div>
+          </div>
+        </div>
+
+        <!-- talking points -->
+        <div style="background:#ffffff; border:1px solid #e7e4da; padding:26px 28px; margin-bottom:20px;">
+          <div style="font-size:11px; font-weight:600; letter-spacing:0.2em; text-transform:uppercase; color:#35362e; margin-bottom:18px;">Talking points</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:28px;">
+            <div>
+              <div style="font-size:11px; font-weight:600; letter-spacing:0.16em; text-transform:uppercase; color:#656c06; margin-bottom:10px;">From you</div>
+              ${pointsYou}
+              <div style="display:flex; gap:8px; margin-top:12px;">
+                <input data-draft="you" value="${esc(state.draftPointYou)}" placeholder="Add a point&hellip;" style="flex:1; background:#faf9f6; border:1px solid #e4e0d4; border-radius:6px; padding:9px 12px; font-size:14px; font-family:inherit; color:#35362e; outline:none;">
+                <button data-action="addPoint" data-side="you" style="flex:none; width:38px; background:#eef0e3; border:1px solid #dde0cb; border-radius:6px; cursor:pointer; font-size:20px; line-height:1; color:#656c06;">+</button>
+              </div>
+            </div>
+            <div>
+              <div style="font-size:11px; font-weight:600; letter-spacing:0.16em; text-transform:uppercase; color:#c58623; margin-bottom:10px;">From ${esc(sel.firstName)}</div>
+              ${pointsThem}
+              <div style="display:flex; gap:8px; margin-top:12px;">
+                <input data-draft="them" value="${esc(state.draftPointThem)}" placeholder="Add a point&hellip;" style="flex:1; background:#faf9f6; border:1px solid #e4e0d4; border-radius:6px; padding:9px 12px; font-size:14px; font-family:inherit; color:#35362e; outline:none;">
+                <button data-action="addPoint" data-side="them" style="flex:none; width:38px; background:#f6ecdd; border:1px solid #ecddc4; border-radius:6px; cursor:pointer; font-size:20px; line-height:1; color:#c58623;">+</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- notes -->
+        <div style="background:#ffffff; border:1px solid #e7e4da; padding:26px 28px; margin-bottom:20px;">
+          <div style="font-size:11px; font-weight:600; letter-spacing:0.2em; text-transform:uppercase; color:#35362e; margin-bottom:14px;">Shared notes</div>
+          <textarea data-doc-field="notes" placeholder="What came up? Capture it together&hellip;" rows="5" style="width:100%; background:#faf9f6; border:1px solid #e4e0d4; border-radius:6px; padding:13px 15px; font-size:15px; font-family:'Newsreader',Georgia,serif; line-height:1.55; color:#35362e; outline:none; resize:vertical;">${esc(doc.notes)}</textarea>
+        </div>
+
+        <!-- action items -->
+        <div style="background:#ffffff; border:1px solid #e7e4da; padding:26px 28px;">
+          <div style="font-size:11px; font-weight:600; letter-spacing:0.2em; text-transform:uppercase; color:#35362e; margin-bottom:16px;">Action items</div>
+          ${actions}
+          <div style="display:flex; gap:8px; margin-top:14px;">
+            <input data-draft="action" value="${esc(state.draftAction)}" placeholder="Add an action item &mdash; tap the pill to assign it&hellip;" style="flex:1; background:#faf9f6; border:1px solid #e4e0d4; border-radius:6px; padding:10px 13px; font-size:14px; font-family:inherit; color:#35362e; outline:none;">
+            <button data-action="addAction" style="flex:none; width:40px; background:#35362e; border:none; border-radius:6px; cursor:pointer; font-size:20px; line-height:1; color:#f4f3ef;">+</button>
+          </div>
+        </div>
+      </section>
+
+      <aside>
+        <div style="background:#ffffff; border:1px solid #e7e4da; padding:24px 22px; margin-bottom:18px;">
+          <div style="font-size:11px; font-weight:600; letter-spacing:0.2em; text-transform:uppercase; color:#9a9a8e; margin-bottom:6px;">Past 1:1s</div>
+          ${historyBlock}
+        </div>
+        <div style="background:#edebe5; border:1px solid #e2dfd5; padding:22px;">
+          <div style="font-family:'Newsreader',Georgia,serif; font-style:italic; font-size:17px; line-height:1.4; color:#35362e; margin-bottom:16px;">Before you dive in, a refresher on how ${esc(sel.firstName)} likes to hear things.</div>
+          <button data-action="nav" data-screen="manuals" style="background:none; border:none; cursor:pointer; padding:0 0 4px; font-size:12px; font-weight:600; letter-spacing:0.15em; text-transform:uppercase; color:#35362e; border-bottom:1.5px solid #656c06;">Read their manual &rarr;</button>
+        </div>
+      </aside>
+    </div>
+  </main>`;
+}
+
+/* ============================================================
+   Render + focus preservation
+   ============================================================ */
+
+function screenView() {
+  switch (state.screen) {
+    case 'manuals':  return viewManuals();
+    case 'oneone':   return viewOneOne();
+    case 'log':      return viewLog();
+    case 'glossary': return viewGlossary();
+    default:         return viewHome();
+  }
+}
+
+function render(preserveFocus) {
+  const app = document.getElementById('app');
+
+  // capture focus + caret so re-renders (e.g. live search) don't drop the cursor
+  let focusKey = null, selStart = null, selEnd = null;
+  if (preserveFocus) {
+    const a = document.activeElement;
+    if (a && app.contains(a)) {
+      focusKey = a.id || a.getAttribute('data-field') || a.getAttribute('data-draft') ||
+                 a.getAttribute('data-doc-field') || a.getAttribute('data-note-key');
+      try { selStart = a.selectionStart; selEnd = a.selectionEnd; } catch (e) {}
+    }
+  }
+
+  app.innerHTML = viewHeader() + screenView() + viewFooter();
+
+  if (focusKey) {
+    const el = app.querySelector('#' + CSS.escape(focusKey)) ||
+               app.querySelector('[data-field="' + focusKey + '"]') ||
+               app.querySelector('[data-draft="' + focusKey + '"]') ||
+               app.querySelector('[data-doc-field="' + focusKey + '"]') ||
+               app.querySelector('[data-note-key="' + focusKey + '"]');
+    if (el) {
+      el.focus();
+      if (selStart != null) { try { el.setSelectionRange(selStart, selEnd); } catch (e) {} }
+    }
+  }
+}
+
+function go(screen) {
+  state.screen = screen;
+  render();
+  try { window.scrollTo(0, 0); } catch (e) {}
+}
+
+/* ---------- mutations ---------- */
+function toggleCheck(key) {
+  state.checks = { ...state.checks, [key]: !state.checks[key] };
+  persistChecks();
+  render();
+}
+
+function logIt() {
+  const sel = selectedEmp();
+  const topic = (state.topic || '').trim() || 'A feedback conversation.';
+  state.log = [ ...(state.log || []), { who: sel.name, date: today(), topic } ];
+  state.checks = {};
+  state.notes = {};
+  state.topic = '';
+  state.activePhase = 'prep';
+  persistLog(); persistChecks(); persistNotes();
+  render();
+}
+
+function addPoint(side) {
+  const key = side === 'you' ? 'draftPointYou' : 'draftPointThem';
+  const draft = (state[key] || '').trim();
+  if (!draft) return;
+  mutateDoc(d => { const k = side === 'you' ? 'pointsYou' : 'pointsThem'; d[k].push({ text: draft, done: false }); return d; });
+  state[key] = '';
+  render();
+}
+
+function addAction() {
+  const draft = (state.draftAction || '').trim();
+  if (!draft) return;
+  mutateDoc(d => { d.actions.push({ text: draft, owner: 'you', done: false }); return d; });
+  state.draftAction = '';
+  render();
+}
+
+/* ---------- event delegation ---------- */
+function handleClick(ev) {
+  const t = ev.target.closest('[data-action]');
+  if (!t) return;
+  const action = t.getAttribute('data-action');
+  switch (action) {
+    case 'nav':        go(t.getAttribute('data-screen')); break;
+    case 'selectEmp':  state.selectedId = t.getAttribute('data-id'); render(); break;
+    case 'setPhase':   state.activePhase = t.getAttribute('data-phase'); render(); break;
+    case 'toggleCheck':toggleCheck(t.getAttribute('data-key')); break;
+    case 'logIt':      logIt(); break;
+    case 'togglePoint':{ const s=t.getAttribute('data-side'); const i=+t.getAttribute('data-idx');
+      mutateDoc(d => { const k = s==='you'?'pointsYou':'pointsThem'; d[k][i].done = !d[k][i].done; return d; }); render(); break; }
+    case 'removePoint':{ const s=t.getAttribute('data-side'); const i=+t.getAttribute('data-idx');
+      mutateDoc(d => { const k = s==='you'?'pointsYou':'pointsThem'; d[k].splice(i,1); return d; }); render(); break; }
+    case 'addPoint':   addPoint(t.getAttribute('data-side')); break;
+    case 'toggleAction':{ const i=+t.getAttribute('data-idx');
+      mutateDoc(d => { d.actions[i].done = !d.actions[i].done; return d; }); render(); break; }
+    case 'setOwner':   { const i=+t.getAttribute('data-idx');
+      mutateDoc(d => { d.actions[i].owner = d.actions[i].owner==='you'?'them':'you'; return d; }); render(); break; }
+    case 'removeAction':{ const i=+t.getAttribute('data-idx');
+      mutateDoc(d => { d.actions.splice(i,1); return d; }); render(); break; }
+    case 'addAction':  addAction(); break;
+  }
+}
+
+function handleInput(ev) {
+  const t = ev.target;
+  if (t.hasAttribute('data-field')) {
+    const f = t.getAttribute('data-field');
+    if (f === 'topic')  { state.topic = t.value; }            // silent
+    else if (f === 'search') { state.search = t.value; render(true); } // live filter, keep caret
+  } else if (t.hasAttribute('data-note-key')) {
+    const key = t.getAttribute('data-note-key');
+    state.notes = { ...state.notes, [key]: t.value };
+    persistNotes();                                            // silent
+  } else if (t.hasAttribute('data-doc-field')) {
+    const f = t.getAttribute('data-doc-field');
+    mutateDoc(d => { d[f] = t.value; return d; });             // silent (persists)
+  } else if (t.hasAttribute('data-draft')) {
+    const d = t.getAttribute('data-draft');
+    if (d === 'you')   state.draftPointYou = t.value;
+    if (d === 'them')  state.draftPointThem = t.value;
+    if (d === 'action')state.draftAction = t.value;            // silent
+  }
+}
+
+function handleKeydown(ev) {
+  const t = ev.target;
+  if (ev.key === 'Enter' && t.hasAttribute('data-draft')) {
+    ev.preventDefault();
+    const d = t.getAttribute('data-draft');
+    if (d === 'action') addAction();
+    else addPoint(d);
+  }
+}
+
+/* ---------- boot ---------- */
+function init() {
+  loadState();
+  const app = document.getElementById('app');
+  app.addEventListener('click', handleClick);
+  app.addEventListener('input', handleInput);
+  app.addEventListener('keydown', handleKeydown);
+  render();
+}
+
+if (document.readyState !== 'loading') init();
+else document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
