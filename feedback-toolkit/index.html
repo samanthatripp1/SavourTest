@@ -27,6 +27,62 @@
   ::selection { background: #656c06; color: #f4f3ef; }
   input::placeholder, textarea::placeholder { color: #a8a89c; }
   button { font-family: inherit; }
+
+  /* ---- mobile nav ---- */
+  .nav-links { display: flex; align-items: center; gap: 32px; }
+  .nav-toggle { display: none; background: none; border: none; cursor: pointer; padding: 8px; color: #35362e; }
+  .nav-toggle svg { display: block; }
+
+  @media (max-width: 768px) {
+    .nav-toggle { display: block; }
+    .nav-links {
+      display: none; flex-direction: column; gap: 0;
+      position: absolute; top: 72px; left: 0; right: 0;
+      background: rgba(244,243,239,0.98); backdrop-filter: blur(10px);
+      border-bottom: 1px solid #e2dfd5; padding: 12px 0; z-index: 49;
+    }
+    .nav-links.open { display: flex; }
+    .nav-links button { width: 100%; text-align: center; padding: 14px 24px !important; }
+    .nav-links .nav-cta { margin: 8px 24px 4px; width: auto; }
+  }
+
+  /* ---- responsive grids ---- */
+  @media (max-width: 1024px) {
+    .hero-grid { grid-template-columns: 1fr !important; gap: 40px !important; }
+    .hero-grid h1 { font-size: 48px !important; }
+    .cards-grid { grid-template-columns: repeat(2, 1fr) !important; }
+    .manuals-grid { grid-template-columns: 1fr !important; }
+    .log-grid { grid-template-columns: 1fr !important; }
+    .oneone-grid { grid-template-columns: 1fr !important; }
+    .glossary-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  }
+
+  @media (max-width: 640px) {
+    .hero-grid h1 { font-size: 36px !important; }
+    .hero-section { padding: 48px 20px 40px !important; }
+    .hero-cta { flex-direction: column; }
+    .hero-cta button { width: 100%; text-align: center; }
+    .cards-grid { grid-template-columns: 1fr !important; }
+    .glossary-grid { grid-template-columns: 1fr !important; }
+    .page-section { padding-left: 20px !important; padding-right: 20px !important; }
+    .strip-section { padding-left: 20px !important; padding-right: 20px !important; }
+    .strip-inner { flex-direction: column; text-align: center; gap: 12px !important; }
+    .manuals-detail { padding: 28px 22px !important; }
+    .manuals-fields { grid-template-columns: 1fr !important; }
+    .phase-tabs { flex-direction: column; gap: 0 !important; }
+    .phase-tabs button { border-bottom: 1px solid #e2dfd5 !important; }
+    .phase-panel { padding: 24px 20px !important; }
+    .oneone-meta { flex-direction: column; align-items: flex-start !important; }
+    .oneone-meta > div:last-child { text-align: left !important; }
+    .checkin-grid { grid-template-columns: 1fr !important; }
+    .points-grid { grid-template-columns: 1fr !important; }
+    .log-record { padding: 24px 20px !important; }
+    .encourage-count { font-size: 28px !important; }
+    .page-title { font-size: 32px !important; }
+    .footer-inner { flex-direction: column; text-align: center; gap: 12px !important; }
+    .header-inner { padding: 0 20px !important; }
+    .quote-overlay { position: relative !important; bottom: auto !important; left: auto !important; margin-top: -22px; }
+  }
 </style>
 </head>
 <body>
@@ -253,14 +309,15 @@ function navLink(screen, label) {
 function viewHeader() {
   return `
   <header style="position:sticky; top:0; z-index:50; background:rgba(244,243,239,0.86); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border-bottom:1px solid #e2dfd5;">
-    <div style="max-width:1180px; margin:0 auto; padding:0 36px; height:72px; display:flex; align-items:center; justify-content:space-between;">
+    <div class="header-inner" style="max-width:1180px; margin:0 auto; padding:0 36px; height:72px; display:flex; align-items:center; justify-content:space-between;">
       <button data-action="nav" data-screen="home" style="background:none; border:none; cursor:pointer; padding:0; line-height:0; display:block;"><img src="assets/savour-logo.png" alt="savour co." style="height:25px; width:auto; display:block;"></button>
-      <nav style="display:flex; align-items:center; gap:32px;">
+      <button class="nav-toggle" data-action="toggleNav" aria-label="Menu"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+      <nav class="nav-links" id="nav-links">
         ${navLink('manuals', 'Manuals')}
         ${navLink('oneone', '1:1 Doc')}
         ${navLink('log', 'Log')}
         ${navLink('glossary', 'Glossary')}
-        <button data-action="nav" data-screen="log" style="background:#35362e; border:none; cursor:pointer; padding:11px 20px; font-size:12px; font-weight:600; letter-spacing:0.15em; text-transform:uppercase; color:#f4f3ef;">Start a log</button>
+        <button class="nav-cta" data-action="nav" data-screen="log" style="background:#35362e; border:none; cursor:pointer; padding:11px 20px; font-size:12px; font-weight:600; letter-spacing:0.15em; text-transform:uppercase; color:#f4f3ef;">Start a log</button>
       </nav>
     </div>
   </header>`;
@@ -269,7 +326,7 @@ function viewHeader() {
 function viewFooter() {
   return `
   <footer style="border-top:1px solid #e2dfd5; margin-top:0;">
-    <div style="max-width:1180px; margin:0 auto; padding:40px 36px; display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap;">
+    <div class="footer-inner" style="max-width:1180px; margin:0 auto; padding:40px 36px; display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap;">
       <div style="line-height:0;"><img src="assets/savour-logo.png" alt="savour co." style="height:20px; width:auto; display:block;"></div>
       <div style="font-family:'Newsreader',Georgia,serif; font-style:italic; font-size:16px; color:#8a8a7e;">For leaders who&rsquo;d rather grow people than grade them.</div>
     </div>
@@ -287,20 +344,20 @@ function viewHome() {
   return `
   <main>
     <!-- HERO -->
-    <section style="max-width:1180px; margin:0 auto; padding:84px 36px 56px;">
-      <div style="display:grid; grid-template-columns:1.05fr 0.95fr; gap:64px; align-items:center;">
+    <section class="hero-section" style="max-width:1180px; margin:0 auto; padding:84px 36px 56px;">
+      <div class="hero-grid" style="display:grid; grid-template-columns:1.05fr 0.95fr; gap:64px; align-items:center;">
         <div>
           <div style="font-size:12px; font-weight:600; letter-spacing:0.3em; text-transform:uppercase; color:#656c06; margin-bottom:26px;">A feedback toolkit for leaders</div>
           <h1 style="font-family:'Instrument Serif',Georgia,serif; font-weight:400; font-size:66px; line-height:1.0; letter-spacing:-0.025em; margin:0 0 26px; text-wrap:balance;">Give feedback that lands &mdash; with more care than dread.</h1>
           <p style="font-size:18px; line-height:1.6; color:#56564d; max-width:30em; margin:0 0 36px;">Three quiet tools to help you prepare, deliver, and follow up on feedback &mdash; built around how each person&rsquo;s brain actually wants to hear it.</p>
-          <div style="display:flex; gap:14px;">
+          <div class="hero-cta" style="display:flex; gap:14px;">
             <button data-action="nav" data-screen="log" style="background:#656c06; border:none; cursor:pointer; padding:15px 26px; font-size:13px; font-weight:600; letter-spacing:0.15em; text-transform:uppercase; color:#f4f3ef;">Start a feedback log</button>
             <button data-action="nav" data-screen="manuals" style="background:none; border:1px solid #c9c6ba; cursor:pointer; padding:15px 26px; font-size:13px; font-weight:600; letter-spacing:0.15em; text-transform:uppercase; color:#35362e;">Read the manuals</button>
           </div>
         </div>
         <div style="position:relative;">
           ${photo}
-          <div style="position:absolute; bottom:-22px; left:-22px; background:#c58623; color:#f4f3ef; padding:18px 22px; max-width:230px;">
+          <div class="quote-overlay" style="position:absolute; bottom:-22px; left:-22px; background:#c58623; color:#f4f3ef; padding:18px 22px; max-width:230px;">
             <div style="font-family:'Newsreader',Georgia,serif; font-style:italic; font-size:19px; line-height:1.3;">&ldquo;The conversation isn&rsquo;t over when it ends.&rdquo;</div>
           </div>
         </div>
@@ -308,10 +365,10 @@ function viewHome() {
     </section>
 
     <!-- ENCOURAGEMENT STRIP -->
-    <section style="max-width:1180px; margin:0 auto; padding:24px 36px 12px;">
-      <div style="border-top:1px solid #e2dfd5; border-bottom:1px solid #e2dfd5; padding:26px 0; display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap;">
+    <section class="strip-section" style="max-width:1180px; margin:0 auto; padding:24px 36px 12px;">
+      <div class="strip-inner" style="border-top:1px solid #e2dfd5; border-bottom:1px solid #e2dfd5; padding:26px 0; display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap;">
         <div style="display:flex; align-items:baseline; gap:16px;">
-          <span style="font-family:'Newsreader',Georgia,serif; font-size:40px; font-weight:600; color:#656c06; line-height:1;">${logCount}</span>
+          <span class="encourage-count" style="font-family:'Newsreader',Georgia,serif; font-size:40px; font-weight:600; color:#656c06; line-height:1;">${logCount}</span>
           <span style="font-size:14px; color:#56564d; max-width:24em;">conversations logged so far. Every one is a person you chose to invest in.</span>
         </div>
         <div style="font-family:'Newsreader',Georgia,serif; font-style:italic; font-size:20px; color:#35362e;">Welcome back, ${esc(PROPS.managerName)}.</div>
@@ -319,9 +376,9 @@ function viewHome() {
     </section>
 
     <!-- TOOL CARDS -->
-    <section style="max-width:1180px; margin:0 auto; padding:48px 36px 90px;">
+    <section class="page-section" style="max-width:1180px; margin:0 auto; padding:48px 36px 90px;">
       <div style="font-size:12px; font-weight:600; letter-spacing:0.3em; text-transform:uppercase; color:#9a9a8e; margin-bottom:28px;">Four tools, one toolkit</div>
-      <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:20px;">
+      <div class="cards-grid" style="display:grid; grid-template-columns:repeat(4,1fr); gap:20px;">
 
         <article style="background:#ffffff; border:1px solid #e7e4da; display:flex; flex-direction:column;">
           <div style="height:158px; background:#656c06; position:relative; overflow:hidden;">
@@ -412,15 +469,15 @@ function viewManuals() {
       </div>`).join('');
 
   return `
-  <main style="max-width:1180px; margin:0 auto; padding:60px 36px 90px;">
+  <main class="page-section" style="max-width:1180px; margin:0 auto; padding:60px 36px 90px;">
     <div style="font-size:12px; font-weight:600; letter-spacing:0.3em; text-transform:uppercase; color:#656c06; margin-bottom:18px;">User Manuals</div>
-    <h1 style="font-family:'Instrument Serif',Georgia,serif; font-weight:400; font-size:46px; line-height:1.05; letter-spacing:-0.022em; margin:0 0 14px; max-width:18em;">How each person likes to receive feedback.</h1>
+    <h1 class="page-title" style="font-family:'Instrument Serif',Georgia,serif; font-weight:400; font-size:46px; line-height:1.05; letter-spacing:-0.022em; margin:0 0 14px; max-width:18em;">How each person likes to receive feedback.</h1>
     <p style="font-size:17px; line-height:1.6; color:#56564d; max-width:34em; margin:0 0 44px;">Read the manual before the meeting. A minute here saves an hour of repair later.</p>
 
-    <div style="display:grid; grid-template-columns:300px 1fr; gap:40px; align-items:start;">
+    <div class="manuals-grid" style="display:grid; grid-template-columns:300px 1fr; gap:40px; align-items:start;">
       <aside style="background:#ffffff; border:1px solid #e7e4da;">${sidebar}</aside>
 
-      <section style="background:#ffffff; border:1px solid #e7e4da; padding:44px 44px 40px;">
+      <section class="manuals-detail" style="background:#ffffff; border:1px solid #e7e4da; padding:44px 44px 40px;">
         <div style="display:flex; align-items:center; gap:22px; padding-bottom:28px; border-bottom:1px solid #efece3; margin-bottom:34px;">
           <span style="flex:none; width:76px; height:76px; border-radius:50%; background:#656c06; color:#f4f3ef; display:flex; align-items:center; justify-content:center; font-size:26px; font-weight:600; font-family:'Newsreader',Georgia,serif;">${esc(sel.initials)}</span>
           <div>
@@ -431,7 +488,7 @@ function viewManuals() {
 
         <div style="font-family:'Newsreader',Georgia,serif; font-style:italic; font-size:24px; line-height:1.4; color:#35362e; margin-bottom:38px; max-width:26em;">&ldquo;${esc(sel.quote)}&rdquo;</div>
 
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:26px 40px;">${fields}</div>
+        <div class="manuals-fields" style="display:grid; grid-template-columns:1fr 1fr; gap:26px 40px;">${fields}</div>
 
         <div style="margin-top:40px; padding-top:30px; border-top:1px solid #efece3;">
           <button data-action="nav" data-screen="log" style="background:#656c06; border:none; cursor:pointer; padding:14px 24px; font-size:12px; font-weight:600; letter-spacing:0.15em; text-transform:uppercase; color:#f4f3ef;">Prep feedback for ${esc(sel.firstName)} &rarr;</button>
@@ -513,21 +570,21 @@ function viewLog() {
             </div>`).join('');
 
   return `
-  <main style="max-width:1180px; margin:0 auto; padding:60px 36px 90px;">
+  <main class="page-section" style="max-width:1180px; margin:0 auto; padding:60px 36px 90px;">
     <div style="font-size:12px; font-weight:600; letter-spacing:0.3em; text-transform:uppercase; color:#656c06; margin-bottom:18px;">Feedback Log</div>
-    <h1 style="font-family:'Instrument Serif',Georgia,serif; font-weight:400; font-size:46px; line-height:1.05; letter-spacing:-0.022em; margin:0 0 14px; max-width:16em;">Good feedback, one careful step at a time.</h1>
+    <h1 class="page-title" style="font-family:'Instrument Serif',Georgia,serif; font-weight:400; font-size:46px; line-height:1.05; letter-spacing:-0.022em; margin:0 0 14px; max-width:16em;">Good feedback, one careful step at a time.</h1>
     <p style="font-size:17px; line-height:1.6; color:#56564d; max-width:34em; margin:0 0 40px;">Work through each phase before the conversation. When you&rsquo;re done, log it &mdash; and watch your record grow.</p>
 
-    <div style="display:grid; grid-template-columns:1fr 340px; gap:40px; align-items:start;">
+    <div class="log-grid" style="display:grid; grid-template-columns:1fr 340px; gap:40px; align-items:start;">
       <section>
         <div style="background:#ffffff; border:1px solid #e7e4da; padding:22px 24px; margin-bottom:24px;">
           <div style="font-size:11px; font-weight:600; letter-spacing:0.2em; text-transform:uppercase; color:#9a9a8e; margin-bottom:14px;">Who is this conversation for?</div>
           <div style="display:flex; flex-wrap:wrap; gap:10px;">${empChips('9px 16px')}</div>
         </div>
 
-        <div style="display:flex; gap:10px; margin-bottom:0;">${tabs}</div>
+        <div class="phase-tabs" style="display:flex; gap:10px; margin-bottom:0;">${tabs}</div>
 
-        <div style="background:#ffffff; border:1px solid #e2dfd5; padding:32px 34px 34px;">
+        <div class="phase-panel" style="background:#ffffff; border:1px solid #e2dfd5; padding:32px 34px 34px;">
           <div style="font-family:'Newsreader',Georgia,serif; font-style:italic; font-size:21px; line-height:1.4; color:#56564d; margin-bottom:6px;">${esc(phase.tagline)}</div>
           <div style="height:5px; background:#edebe5; margin:20px 0 28px; position:relative; overflow:hidden;">
             <div style="position:absolute; left:0; top:0; bottom:0; width:${pct}%; background:#656c06; transition:width 0.3s ease;"></div>
@@ -538,7 +595,7 @@ function viewLog() {
         </div>
       </section>
 
-      <aside style="background:#35362e; color:#f4f3ef; padding:30px 28px;">
+      <aside class="log-record" style="background:#35362e; color:#f4f3ef; padding:30px 28px;">
         <div style="font-size:11px; font-weight:600; letter-spacing:0.24em; text-transform:uppercase; color:#c58623; margin-bottom:18px;">Your feedback record</div>
         <div style="display:flex; align-items:baseline; gap:12px; margin-bottom:6px;">
           <span style="font-family:'Newsreader',Georgia,serif; font-size:48px; font-weight:600; line-height:1;">${logCount}</span>
@@ -570,14 +627,14 @@ function viewGlossary() {
     : '';
 
   return `
-  <main style="max-width:1180px; margin:0 auto; padding:60px 36px 90px;">
+  <main class="page-section" style="max-width:1180px; margin:0 auto; padding:60px 36px 90px;">
     <div style="font-size:12px; font-weight:600; letter-spacing:0.3em; text-transform:uppercase; color:#656c06; margin-bottom:18px;">Glossary</div>
-    <h1 style="font-family:'Instrument Serif',Georgia,serif; font-weight:400; font-size:46px; line-height:1.05; letter-spacing:-0.022em; margin:0 0 14px; max-width:16em;">Tips &amp; tricks for feedback that doesn&rsquo;t sting.</h1>
+    <h1 class="page-title" style="font-family:'Instrument Serif',Georgia,serif; font-weight:400; font-size:46px; line-height:1.05; letter-spacing:-0.022em; margin:0 0 14px; max-width:16em;">Tips &amp; tricks for feedback that doesn&rsquo;t sting.</h1>
     <p style="font-size:17px; line-height:1.6; color:#56564d; max-width:34em; margin:0 0 30px;">A little brain science, a lot of kindness. Skim before a tough conversation.</p>
 
     <input id="search-input" data-field="search" value="${esc(state.search)}" placeholder="Search tips, terms, science&hellip;" style="width:100%; max-width:420px; background:#ffffff; border:1px solid #d8d4c8; padding:14px 18px; font-size:15px; font-family:inherit; color:#35362e; outline:none; margin-bottom:40px;">
 
-    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:22px;">${cards}</div>
+    <div class="glossary-grid" style="display:grid; grid-template-columns:repeat(3,1fr); gap:22px;">${cards}</div>
     ${noResults}
   </main>`;
 }
@@ -626,12 +683,12 @@ function viewOneOne() {
     : `<div style="font-family:'Newsreader',Georgia,serif; font-style:italic; font-size:15px; color:#9a9a8e; padding:10px 0;">No past sessions yet &mdash; this is your first together.</div>`;
 
   return `
-  <main style="max-width:1180px; margin:0 auto; padding:60px 36px 90px;">
+  <main class="page-section" style="max-width:1180px; margin:0 auto; padding:60px 36px 90px;">
     <div style="font-size:12px; font-weight:600; letter-spacing:0.3em; text-transform:uppercase; color:#656c06; margin-bottom:18px;">1:1 Doc</div>
-    <h1 style="font-family:'Instrument Serif',Georgia,serif; font-weight:400; font-size:46px; line-height:1.05; letter-spacing:-0.022em; margin:0 0 14px; max-width:16em;">Your shared space with ${esc(sel.firstName)}.</h1>
+    <h1 class="page-title" style="font-family:'Instrument Serif',Georgia,serif; font-weight:400; font-size:46px; line-height:1.05; letter-spacing:-0.022em; margin:0 0 14px; max-width:16em;">Your shared space with ${esc(sel.firstName)}.</h1>
     <p style="font-size:17px; line-height:1.6; color:#56564d; max-width:36em; margin:0 0 6px;">A living doc you both own. Add talking points, capture notes together, and leave with clear next steps &mdash; <span style="font-family:'Newsreader',Georgia,serif; font-style:italic; color:#35362e;">both sides edit it.</span></p>
 
-    <div style="background:#ffffff; border:1px solid #e7e4da; padding:18px 22px; margin:28px 0 22px; display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap;">
+    <div class="oneone-meta" style="background:#ffffff; border:1px solid #e7e4da; padding:18px 22px; margin:28px 0 22px; display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap;">
       <div>
         <div style="font-size:11px; font-weight:600; letter-spacing:0.2em; text-transform:uppercase; color:#9a9a8e; margin-bottom:11px;">Whose 1:1?</div>
         <div style="display:flex; flex-wrap:wrap; gap:9px;">${empChips('8px 15px')}</div>
@@ -643,12 +700,12 @@ function viewOneOne() {
       </div>
     </div>
 
-    <div style="display:grid; grid-template-columns:1fr 320px; gap:32px; align-items:start;">
+    <div class="oneone-grid" style="display:grid; grid-template-columns:1fr 320px; gap:32px; align-items:start;">
       <section>
         <!-- check-in -->
         <div style="background:#ffffff; border:1px solid #e7e4da; padding:26px 28px; margin-bottom:20px;">
           <div style="font-size:11px; font-weight:600; letter-spacing:0.2em; text-transform:uppercase; color:#35362e; margin-bottom:18px;">Check-in &mdash; how are we each arriving?</div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
+          <div class="checkin-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
             <div>
               <div style="font-size:11px; font-weight:600; letter-spacing:0.16em; text-transform:uppercase; color:#656c06; margin-bottom:8px;">You</div>
               <input data-doc-field="checkYou" value="${esc(doc.checkYou)}" placeholder="A word for your headspace today&hellip;" style="width:100%; background:#faf9f6; border:1px solid #e4e0d4; border-radius:6px; padding:10px 13px; font-size:14.5px; font-family:'Newsreader',Georgia,serif; color:#35362e; outline:none;">
@@ -663,7 +720,7 @@ function viewOneOne() {
         <!-- talking points -->
         <div style="background:#ffffff; border:1px solid #e7e4da; padding:26px 28px; margin-bottom:20px;">
           <div style="font-size:11px; font-weight:600; letter-spacing:0.2em; text-transform:uppercase; color:#35362e; margin-bottom:18px;">Talking points</div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:28px;">
+          <div class="points-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:28px;">
             <div>
               <div style="font-size:11px; font-weight:600; letter-spacing:0.16em; text-transform:uppercase; color:#656c06; margin-bottom:10px;">From you</div>
               ${pointsYou}
@@ -805,6 +862,7 @@ function handleClick(ev) {
   if (!t) return;
   const action = t.getAttribute('data-action');
   switch (action) {
+    case 'toggleNav':  { const n=document.getElementById('nav-links'); if(n) n.classList.toggle('open'); } return;
     case 'nav':        go(t.getAttribute('data-screen')); break;
     case 'selectEmp':  state.selectedId = t.getAttribute('data-id'); render(); break;
     case 'setPhase':   state.activePhase = t.getAttribute('data-phase'); render(); break;
